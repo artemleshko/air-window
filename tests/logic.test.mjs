@@ -87,25 +87,25 @@ test('Велосипед: пороги PM2.5 и PM10, озон и NO₂', () => 
   // Высокий озон — пояснение, сильный — отдельная строка совета.
   assert.match(adviceNow(ctx({ pm25: 10, pm10: 20, o3: 130 })).bike.explain.at(-1), /с утра/);
   const severe = adviceNow(ctx({ pm25: 10, pm10: 20, o3: 190 })).bike;
-  assert.equal(severe.line, 'Спокойный темп или дома.');
+  assert.equal(severe.line, 'Спокойный темп, лучше утром');
   assert.match(adviceNow(ctx({ pm25: 10, pm10: 20, no2: 70 })).bike.explain.at(-1), /выхлопов/);
 });
 
 test('Окна и очиститель', () => {
-  assert.match(adviceNow(ctx({ pm25: 10 })).windows.line, /сколько угодно/);
+  assert.match(adviceNow(ctx({ pm25: 10 })).windows.line, /^Можно проветривать$/);
   assert.match(adviceNow(ctx({ pm25: 20 })).windows.line, /10–15/);
   const w = adviceNow(ctx({ pm25: 30 })).windows;
-  assert.match(w.line, /5–10/);
+  assert.equal(w.line, '5–10 минут + очиститель');
   assert.match(w.explain[0], /17:00/);
   assert.match(adviceNow(ctx({ pm25: 30, cleanest: null })).windows.explain[0], /Проветривайте коротко/);
   assert.match(adviceNow(ctx({ pm25: 60 })).windows.line, /душно/);
   assert.match(adviceNow(ctx({ pm25: 10, o3: 130 })).windows.explain.at(-1), /утром/);
-  assert.equal(adviceNow(ctx({ pm25: 20 })).purifier.line, 'Режим «Авто».');
-  assert.match(adviceNow(ctx({ pm25: 26 })).purifier.line, /Максимум/);
+  assert.equal(adviceNow(ctx({ pm25: 20 })).purifier.line, 'Режим «Авто»');
+  assert.match(adviceNow(ctx({ pm25: 26 })).purifier.line, /^Max/);
   // Значение модели помечается в начале пояснения.
   const model = adviceNow(ctx({ pm25: 10, pm: { station: 'модель', time: '14:00', kind: 'model' } }));
   assert.match(model.windows.explain[0], /прогноз модели/);
-  assert.equal(adviceNow(ctx({ pm25: null })).bike.line, 'Нет данных.');
+  assert.equal(adviceNow(ctx({ pm25: null })).bike.line, 'Нет данных');
 });
 
 test('Совет на час прогноза и предупреждения о газах', () => {

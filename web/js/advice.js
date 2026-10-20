@@ -62,7 +62,7 @@ function bikeLevel({ pm25, pm10, o3 }) {
 
 const bikeLine = ({ tier, ozoneDriven }) => (ozoneDriven ? T.BIKE_OZONE_SEVERE_LINE : T.BIKE[tier].line);
 
-const NONE = { tone: 'none', line: 'Нет данных.', explain: [] };
+const NONE = { tone: 'none', line: 'Нет данных', explain: [] };
 
 // Советы «на сейчас». v: { pm25, pm10, o3, no2, pm: {station, time, kind}, gas: {station, time} | null, cleanest }
 export function adviceNow(v) {
@@ -100,7 +100,7 @@ export function adviceNow(v) {
 // Короткий совет для велосипеда на час прогноза (по значениям модели).
 export function hourAdvice({ pm25, pm10, o3, no2 }) {
   const bl = bikeLevel({ pm25, pm10, o3 });
-  if (bl.pmTier < 0) return { tone: 'none', line: 'Нет данных о частицах.', notes: [] };
+  if (bl.pmTier < 0) return { tone: 'none', line: 'Нет данных о частицах', notes: [] };
   const notes = [];
   if (o3 != null && o3 > O3_HIGH) notes.push(T.HOUR_OZONE);
   if (no2 != null && no2 > NO2_HIGH) notes.push(T.HOUR_NO2);

@@ -17,6 +17,8 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 }[c]));
 const nowSec = () => Math.floor(Date.now() / 1000);
+// Короткие слова не остаются в конце строки при переносе.
+const nbsp = (s) => s.replace(/(?<=^|[\s\u00a0])([вискоуВИСКОУ+]|на|по|до)\s/g, '$1\u00a0');
 
 const GAS_STATION = 11174; // 42 Pułku Piechoty — единственная станция с озоном
 
@@ -167,7 +169,7 @@ function renderAdvice(v) {
     <details class="advice-row tone-${a.tone}">
       <summary>
         <span class="ic" aria-hidden="true">${icon}</span>
-        <span class="advice-text"><span class="advice-title">${title}</span>${esc(a.line)}</span>
+        <span class="advice-text"><span class="advice-title">${title}</span>${esc(nbsp(a.line))}</span>
         <span class="chev" aria-hidden="true"></span>
       </summary>
       <div class="advice-explain">${a.explain.map((p) => `<p>${esc(p)}</p>`).join('')}</div>
@@ -249,28 +251,23 @@ function renderForecast(now) {
 
 function renderHourDetail(h, loc) {
   if (!h) return;
-  const { t, k, a, wh, flags } = h;
+  const { t, a, wh, flags } = h;
   const adv = a ? hourAdvice(a) : null;
-  const pols = ['pm25', 'pm10', 'o3', 'no2']
-    .map((p) => `<span class="det-val">${POLLUTANTS[p].label} ${pill(p, a?.[p], 'pill-xs')}</span>`)
-    .join('');
+  const pols = ['pm25', 'pm10', 'o3', 'no2'].map((p) => dotValue(p, a?.[p])).join('');
   const weather = wh
     ? [
-      `${weatherIcon(wh)} ${skyLabel(wh.code)}`,
-      `${Math.round(wh.temperature)}°`,
+      `${weatherIcon(wh)} ${skyLabel(wh.code)}, ${Math.round(wh.temperature)}°`,
       precipText(wh),
       `ветер ${Math.round(wh.wind)} м/с, порывы ${Math.round(wh.gusts)}`,
     ].filter(Boolean).join(' · ')
     : 'нет прогноза погоды';
 
   $('#hour-detail').innerHTML = `
-    <p class="det-head"><b>${k === 0 ? `Сейчас (${hourLabel(t)})` : hourLabel(t)}</b>
-      <span class="muted">· ${esc(LOCATIONS[loc].name)}, прогноз</span></p>
-    <div class="det-vals">${pols}</div>
+    <div class="det-vals"><span class="det-time">${hourLabel(t)}</span>${pols}</div>
     <p>${esc(weather)}</p>
     ${flags.map((f) => `<p class="warn-text">⚠ ${esc(f)}</p>`).join('')}
-    ${adv ? `<p class="det-advice tone-${adv.tone}">🚴 ${esc(adv.line)}</p>` : ''}
-    ${(adv?.notes ?? []).map((n) => `<p class="muted">${esc(n)}</p>`).join('')}`;
+    ${adv ? `<p>🚴 ${esc(adv.line)}${adv.notes.length ? `. ${esc(adv.notes.join(' '))}` : ''}</p>` : ''}
+    <p class="det-note">${esc(LOCATIONS[loc].name)}, прогноз модели</p>`;
 }
 
 // ---------- Данные измерений ----------

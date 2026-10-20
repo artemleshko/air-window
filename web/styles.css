@@ -124,7 +124,6 @@ p { margin: 0; }
 
 .pill-none { background: var(--soft); color: var(--ink-3); }
 .pill-sm { min-width: 40px; font-size: 0.88rem; }
-.pill-xs { min-width: 34px; padding: 1px 5px; font-size: 0.8rem; border-radius: 6px; }
 
 .dot {
   display: inline-block;
@@ -337,18 +336,18 @@ details[open] > summary .chev { transform: rotate(-135deg); margin-bottom: -4px;
 .flag { color: var(--warn); font-size: 0.75rem; }
 
 .hour-detail {
-  margin-top: 8px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: var(--soft);
-  font-size: 0.88rem;
+  margin-top: 4px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.82rem;
+  color: var(--ink-2);
 }
 
-.hour-detail p + p, .hour-detail .det-vals + p { margin-top: 6px; }
-.det-head { margin-bottom: 8px; }
-.det-vals { display: flex; flex-wrap: wrap; gap: 6px 14px; }
-.det-val { white-space: nowrap; color: var(--ink-2); }
-.det-advice { font-weight: 500; }
+.hour-detail p { margin-top: 4px; }
+.det-vals { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; color: var(--ink); }
+.det-time { font-weight: 600; }
+.hour-detail .val-label { font-size: 0.75rem; }
+.det-note { color: var(--ink-3); font-size: 0.75rem; }
 
 /* ---------- Раскрывающиеся блоки ---------- */
 
