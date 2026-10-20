@@ -100,7 +100,7 @@ function utcMonth(sec) {
   return new Date(sec * 1000).toISOString().slice(0, 7);
 }
 
-async function appendHistory(store, stations) {
+export async function appendHistory(store, stations) {
   const byMonth = new Map();
   for (const st of stations) {
     for (const [param, s] of Object.entries(st.series)) {
@@ -122,7 +122,7 @@ async function appendHistory(store, stations) {
       for (const line of old.split('\n').slice(1)) {
         if (!line.trim()) continue;
         const [t, id, param, v] = line.split(',');
-        rows.set(`${t},${id},${param}`, Number(v));
+        rows.set(`${Date.parse(t) / 1000},${id},${param}`, Number(v));
       }
     } catch {
       // Первый файл за месяц.

@@ -5,7 +5,10 @@ import { levelIndex } from '../web/js/eaqi.js';
 import { warsawLocalToUnix, hourLabel, relativeHourLabel } from '../web/js/time.js';
 import { trainingAdvice, windowAdvice, purifierAdvice, homeReference } from '../web/js/advice.js';
 import { precipKind, precipText, roadFlags } from '../web/js/weather.js';
-import { parseGiosSeries } from '../scripts/update-data.mjs';
+import { parseGiosSeries, appendHistory } from '../scripts/update-data.mjs';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 const iso = (sec) => new Date(sec * 1000).toISOString();
 
@@ -106,4 +109,20 @@ test('Погода: тип осадков и предупреждения о д�
   const icy = Array.from({ length: 10 }, () => ({ temperature: 0.5, precipitation: 0.1, code: 3 }));
   assert.ok(roadFlags(icy, 9).some((f) => f.includes('гололёда')));
   assert.deepEqual(roadFlags([{ temperature: 12, precipitation: 0, code: 0, gusts: 5 }], 0), []);
+});
+
+test('Архив измерений: повторный запуск дописывает и обновляет значения', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'aw-'));
+  try {
+    const t = Date.UTC(2026, 9, 20, 20) / 1000;
+    const st = (points) => [{ id: 609, series: { pm25: { points } } }];
+    await appendHistory(dir, st([[t, 13.8], [t + 3600, null]]));
+    await appendHistory(dir, st([[t, 14.0], [t + 3600, 12.5]]));
+    const csv = await readFile(path.join(dir, 'history', 'gios', '2026-10.csv'), 'utf8');
+    assert.equal(csv, 'time_utc,station_id,param,value\n'
+      + '2026-10-20T20:00:00.000Z,609,pm25,14\n'
+      + '2026-10-20T21:00:00.000Z,609,pm25,12.5\n');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
