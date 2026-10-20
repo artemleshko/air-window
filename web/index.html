@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <meta name="description" content="Качество воздуха и погода для тренировок: Белосток и Супрасль">
-  <meta name="theme-color" content="#f4f5f2" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#121517" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f7f7f5" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111315" media="(prefers-color-scheme: dark)">
   <title>Air Window</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -15,81 +15,88 @@
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
-  <header class="top">
-    <div>
-      <h1>Air Window</h1>
-      <p id="status" class="muted small">загрузка…</p>
-    </div>
-    <div class="top-actions">
-      <button id="refresh" class="icon-btn" type="button" aria-label="Обновить">↻</button>
-      <button id="legend-btn" class="icon-btn" type="button" aria-label="Легенда и пояснения">?</button>
-    </div>
-  </header>
-
-  <p id="banner" class="banner" role="status" hidden></p>
-
   <main>
-    <div class="col">
-      <section id="now" class="card" aria-live="polite"></section>
-      <section id="advice" class="card"></section>
-    </div>
-    <div class="col">
-      <section id="forecast" class="card">
-        <div class="card-head"><h2>Ближайшие 12 часов</h2></div>
+    <header class="top">
+      <div>
+        <h1>Air Window</h1>
+        <p id="status" class="muted small">загрузка…</p>
+      </div>
+      <button id="refresh" class="icon-btn" type="button" aria-label="Обновить">↻</button>
+    </header>
+
+    <p id="banner" class="banner" role="status" hidden></p>
+
+    <section id="now" class="block" aria-live="polite"></section>
+
+    <section id="advice" class="block"></section>
+
+    <section id="forecast" class="block">
+      <div class="block-head">
+        <h2>Ближайшие 12 часов</h2>
         <div class="seg" id="loc-seg" role="group" aria-label="Место">
           <button type="button" data-loc="bialystok">Białystok</button>
           <button type="button" data-loc="suprasl">Supraśl</button>
         </div>
-        <div class="seg seg-small" id="pol-seg" role="group" aria-label="Показатель">
-          <button type="button" data-pol="pm25">PM2.5</button>
-          <button type="button" data-pol="pm10">PM10</button>
-          <button type="button" data-pol="o3">O₃</button>
-          <button type="button" data-pol="no2">NO₂</button>
-        </div>
-        <div id="chart"></div>
-        <div id="chart-legend" class="chart-legend small"></div>
-        <p class="muted small hours-caption">По часам — прогноз модели CAMS и погода.</p>
-        <ol id="hours" class="hours"></ol>
-        <p class="muted small">Нажмите на час, чтобы увидеть все показатели, погоду и совет для тренировки.</p>
-      </section>
-      <footer id="sources" class="sources small"></footer>
-    </div>
-  </main>
-
-  <dialog id="legend" aria-labelledby="legend-title">
-    <div class="dialog-body">
-      <div class="card-head">
-        <h2 id="legend-title">Как читать цвета</h2>
-        <button id="legend-close" class="icon-btn" type="button" aria-label="Закрыть">✕</button>
       </div>
-      <p class="small">Европейский индекс качества воздуха (EAQI) Европейского агентства по окружающей среде,
-        редакция 2024 года, согласованная с рекомендациями ВОЗ 2021. Значения — мкг/м³, цвет считается
-        по часовому значению.</p>
-      <div class="table-wrap"><table id="legend-table" class="legend-table"></table></div>
+      <div id="strip" class="strip-wrap"></div>
+      <div id="hour-detail" class="hour-detail"></div>
+    </section>
 
-      <h3>Измерения и прогноз</h3>
-      <ul class="small">
-        <li><b>Сплошная линия и блок «Сейчас»</b> — измерения станций GIOŚ, часовые средние. Время — как его публикует GIOŚ; данные появляются с задержкой 20–60 минут.</li>
-        <li><b>Пунктир и часы впереди</b> — модель CAMS (сетка ~11 км). Она показывает фон района, а не конкретную улицу, и может недооценивать местные вечерние пики от печного отопления.</li>
-        <li>Станции разного типа (фон, у дороги) показаны отдельно и не усредняются: расхождения между ними — нормальны.</li>
-        <li>⏱ — данные станции старше 3 часов.</li>
-      </ul>
+    <details id="measurements" class="block fold">
+      <summary><h2>Данные измерений</h2></summary>
+      <div id="stations"></div>
+    </details>
 
-      <h3>Советы (по PM2.5)</h3>
-      <ul class="small">
-        <li><b>Тренировка:</b> до 25 — без ограничений; 25–50 — респиратор на интенсивных отрезках и в городе; 50–90 — респиратор и спокойный темп или дома; выше 90 — дома. Для PM10 пороги вдвое выше. Озон выше 120 — лучше ехать утром: фильтр от частиц от озона почти не защищает.</li>
-        <li><b>Окна:</b> до 15 — свободно; 15–25 — коротко и интенсивно, 10–15 мин; 25–50 — 5–10 мин в самый чистый час; выше 50 — только по необходимости.</li>
-        <li><b>Очиститель:</b> авто-режим; выше 25 — максимум на 30–45 минут, особенно после проветривания.</li>
-      </ul>
+    <section id="chart-block" class="block">
+      <div class="block-head">
+        <h2>График · Białystok</h2>
+      </div>
+      <div class="seg seg-wide" id="pol-seg" role="group" aria-label="Показатель">
+        <button type="button" data-pol="pm25">PM2.5</button>
+        <button type="button" data-pol="pm10">PM10</button>
+        <button type="button" data-pol="o3">O₃</button>
+        <button type="button" data-pol="no2">NO₂</button>
+      </div>
+      <div id="chart"></div>
+      <div id="chart-legend" class="chart-legend small"></div>
+    </section>
 
-      <h3>Погода</h3>
-      <ul class="small">
-        <li>Осадки: вероятность в % и количество в мм за час.</li>
-        <li>⚠ — подсказка по прогнозу температуры и осадков: риск гололёда около нуля после осадков, мокрая дорога в оттепель после мороза, сильные порывы ветра. Это не знание о состоянии дорог.</li>
-      </ul>
-      <p class="muted small">Air Window — ориентир, а не медицинская рекомендация.</p>
-    </div>
-  </dialog>
+    <details class="block fold">
+      <summary><h2>Как читать цвета и советы</h2></summary>
+      <div class="legend">
+        <p class="small">Цвета — Европейский индекс качества воздуха (EAQI) Европейского агентства
+          по окружающей среде, редакция 2024 года, согласованная с рекомендациями ВОЗ. Значения в мкг/м³,
+          цвет — по часовому значению.</p>
+        <div class="table-wrap"><table id="legend-table" class="legend-table"></table></div>
+
+        <h3>Наверху</h3>
+        <p class="small">PM2.5 и PM10 на станции Варшавская — последний опубликованный час. GIOŚ публикует данные
+          с задержкой 20–60 минут. Озон и NO₂ на Варшавской не меряют: если на станции 42 Pułku Piechoty
+          они в классе «плохо» или хуже, появляется строка ⚠.</p>
+
+        <h3>Советы</h3>
+        <ul class="small">
+          <li><b>Велосипед</b> — по PM2.5 (пороги 25 / 50 / 90) и PM10 (50 / 100 / 180), с учётом озона (выше 120) и NO₂ (выше 60).</li>
+          <li><b>Окна</b> — по PM2.5 (15 / 25 / 50) и озону.</li>
+          <li><b>Очиститель</b> — по PM2.5 (25).</li>
+        </ul>
+
+        <h3>Прогноз</h3>
+        <ul class="small">
+          <li>Плашка — PM2.5 по модели CAMS. Метка под ней (O₃, PM10, NO₂) — в этот час этот загрязнитель хуже по шкале.</li>
+          <li>Модель считает фон района по сетке ~11 км, а не конкретную улицу, и может занижать вечерние пики от печного отопления.</li>
+          <li>Осадки — вероятность и количество за час. ⚠ — риск гололёда, мокрая дорога после мороза или порывы ветра от 14 м/с. Это подсказка по прогнозу, а не знание о дорогах.</li>
+        </ul>
+
+        <h3>Измерения</h3>
+        <p class="small">Станции разного типа (фон, у дороги) не усредняются, расхождения между ними нормальны.
+          ⏱ — данные станции старше 3 часов.</p>
+        <p class="muted small">Air Window — ориентир, а не медицинская рекомендация.</p>
+      </div>
+    </details>
+
+    <footer id="sources" class="sources small"></footer>
+  </main>
 
   <noscript><p class="banner">Для работы приложения нужен JavaScript.</p></noscript>
 </body>

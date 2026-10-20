@@ -64,3 +64,19 @@ export function roadFlags(hours, i) {
   if ((h.gusts ?? 0) >= 14) flags.push(`порывы ветра до ${Math.round(h.gusts)} м/с`);
   return flags;
 }
+
+// Значок погоды по коду WMO; ночью вместо солнца — луна.
+export function weatherIcon(h) {
+  const c = h.code;
+  const night = h.isDay === 0;
+  const kind = precipKind(h);
+  if (kind === 'мокрый снег' || kind === 'снег') return '🌨';
+  if (kind === 'гроза') return '⛈';
+  if (kind === 'морось') return '🌦';
+  if (kind) return '🌧';
+  if (c === 45 || c === 48) return '🌫';
+  if (c === 0) return night ? '🌙' : '☀️';
+  if (c === 1) return night ? '🌙' : '🌤';
+  if (c === 2) return night ? '☁️' : '⛅';
+  return '☁️';
+}

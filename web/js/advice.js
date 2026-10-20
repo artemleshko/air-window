@@ -1,11 +1,23 @@
-// Советы: тренировка, окна, очиститель. Пороги согласованы 2026-10-20 (см. docs/DECISIONS.md).
-// Основа — PM2.5 в мкг/м³ (часовое значение). PM10 — с порогами примерно вдвое выше,
-// озон — по классу EAQI «плохо» (>120 мкг/м³) и выше.
+// Советы: велосипед, окна, очиститель. Пороги согласованы 2026-10-20 (см. docs/DECISIONS.md),
+// тексты — в texts.js (docs/ADVICE-TEXTS.md).
+// Основа — PM2.5 и PM10 в мкг/м³ (часовые значения), озон и NO₂ дополняют совет для велосипеда.
 
 import { HOME_STATION_ORDER, STALE_HOURS } from './config.js';
+import { formatValue } from './format.js';
+import * as T from './texts.js';
 
-const fmt = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
-export const formatValue = (v) => (v == null ? '—' : fmt.format(v));
+export { formatValue };
+
+export const PM25_TIERS = [25, 50, 90];
+export const PM10_TIERS = [50, 100, 180];
+export const O3_HIGH = 120;
+export const O3_SEVERE = 180;
+export const NO2_HIGH = 60;
+
+const BIKE_TONES = ['ok', 'caution', 'warn', 'bad'];
+const WINDOW_TONES = ['ok', 'ok', 'caution', 'warn'];
+
+const tierOf = (v, tiers) => (v == null ? -1 : tiers.filter((t) => v > t).length);
 
 // Последнее непустое значение ряда [[unixSec, value], ...].
 export function latestPoint(points) {
@@ -16,59 +28,89 @@ export function latestPoint(points) {
   return null;
 }
 
-// Опорное значение PM2.5 «сейчас» для советов: свежее измерение ближайшей фоновой станции,
-// иначе — значение модели на текущий час (с пометкой).
+export function freshPoint(stations, stationId, pol, nowSec) {
+  const st = stations?.find((s) => s.id === stationId);
+  const p = latestPoint(st?.series?.[pol]?.points);
+  return p && nowSec - p.time <= STALE_HOURS * 3600 ? { ...p, station: st.name } : null;
+}
+
+// Опорная станция для частиц: Варшавская, при устаревших данных — следующая фоновая,
+// без свежих измерений — модель на текущий час (с пометкой).
 export function homeReference(stations, modelNow, nowSec) {
   for (const id of HOME_STATION_ORDER) {
-    const st = stations?.find((s) => s.id === id);
-    const p = latestPoint(st?.series?.pm25?.points);
-    if (p && nowSec - p.time <= STALE_HOURS * 3600) {
-      return { value: p.value, time: p.time, kind: 'measured', source: st.name };
+    const p = freshPoint(stations, id, 'pm25', nowSec);
+    if (p) {
+      const pm10 = freshPoint(stations, id, 'pm10', nowSec);
+      return { value: p.value, pm10: pm10?.value ?? null, time: p.time, kind: 'measured', source: p.station, stationId: id };
     }
   }
-  if (modelNow?.value != null) {
-    return { value: modelNow.value, time: modelNow.time, kind: 'model', source: 'модель CAMS' };
+  if (modelNow?.pm25 != null) {
+    return { value: modelNow.pm25, pm10: modelNow.pm10 ?? null, time: modelNow.time, kind: 'model', source: 'модель CAMS' };
   }
   return null;
 }
 
-const PM25_TIERS = [25, 50, 90];
-const PM10_TIERS = [50, 100, 180];
-const tierOf = (v, tiers) => (v == null ? -1 : tiers.filter((t) => v > t).length);
+function bikeLevel({ pm25, pm10, o3 }) {
+  const t25 = tierOf(pm25, PM25_TIERS);
+  const t10 = tierOf(pm10, PM10_TIERS);
+  const pmTier = Math.max(t25, t10);
+  const driver = t10 > t25 ? 'pm10' : 'pm25';
+  // Сильный озон поднимает уровень, но респиратор от него не помогает — отдельная строка.
+  const ozoneDriven = o3 != null && o3 > O3_SEVERE && pmTier >= 0 && pmTier < 2;
+  return { tier: ozoneDriven ? 2 : pmTier, pmTier, driver, ozoneDriven };
+}
 
-const TRAINING = [
-  { tone: 'ok', text: 'По воздуху ограничений нет.' },
-  { tone: 'caution', text: 'На интенсивных отрезках и в городе — респиратор.' },
-  { tone: 'warn', text: 'Респиратор и спокойный темп — или тренировка дома.' },
-  { tone: 'bad', text: 'Лучше тренироваться дома.' },
-];
+const bikeLine = ({ tier, ozoneDriven }) => (ozoneDriven ? T.BIKE_OZONE_SEVERE_LINE : T.BIKE[tier].line);
 
-export function trainingAdvice({ pm25, pm10, o3 }) {
-  let tier = Math.max(tierOf(pm25, PM25_TIERS), tierOf(pm10, PM10_TIERS));
-  if (o3 != null && o3 > 180) tier = Math.max(tier, 2);
-  if (tier < 0) return { tone: 'none', text: 'Нет данных о частицах.', notes: [] };
+const NONE = { tone: 'none', line: 'Нет данных.', explain: [] };
+
+// Советы «на сейчас». v: { pm25, pm10, o3, no2, pm: {station, time, kind}, gas: {station, time} | null, cleanest }
+export function adviceNow(v) {
+  if (v.pm25 == null) return { bike: NONE, windows: NONE, purifier: NONE };
+  const prefix = v.pm.kind === 'model' ? [T.MODEL_PREFIX] : [];
+
+  const bl = bikeLevel(v);
+  const bikeExplain = [...prefix, T.BIKE[bl.pmTier].explain({ ...v, driver: bl.driver })];
+  if (v.gas && (v.o3 != null || v.no2 != null)) {
+    const ozoneHigh = v.o3 != null && v.o3 > O3_HIGH;
+    const no2High = v.no2 != null && v.no2 > NO2_HIGH;
+    if (v.o3 > O3_SEVERE) bikeExplain.push(T.BIKE_GASES.ozoneSevere(v));
+    else if (ozoneHigh) bikeExplain.push(T.BIKE_GASES.ozone(v));
+    if (no2High) bikeExplain.push(T.BIKE_GASES.no2(v));
+    if (!ozoneHigh && !no2High) bikeExplain.push(T.BIKE_GASES.normal(v));
+  }
+
+  const wTier = tierOf(v.pm25, [15, 25, 50]);
+  const windowsExplain = [...prefix, T.WINDOWS[wTier].explain(v)];
+  if (v.gas && v.o3 != null && v.o3 > O3_HIGH) windowsExplain.push(T.WINDOWS_OZONE(v));
+
+  const pTier = v.pm25 > 25 ? 1 : 0;
+
+  return {
+    bike: { tone: BIKE_TONES[bl.tier], line: bikeLine(bl), explain: bikeExplain },
+    windows: { tone: WINDOW_TONES[wTier], line: T.WINDOWS[wTier].line, explain: windowsExplain },
+    purifier: {
+      tone: pTier ? 'caution' : 'ok',
+      line: T.PURIFIER[pTier].line,
+      explain: [...prefix, T.PURIFIER[pTier].explain(v), T.PURIFIER_TAIL],
+    },
+  };
+}
+
+// Короткий совет для велосипеда на час прогноза (по значениям модели).
+export function hourAdvice({ pm25, pm10, o3, no2 }) {
+  const bl = bikeLevel({ pm25, pm10, o3 });
+  if (bl.pmTier < 0) return { tone: 'none', line: 'Нет данных о частицах.', notes: [] };
   const notes = [];
-  if (o3 != null && o3 > 120) {
-    notes.push('Озон высокий: лучше ехать утром. Фильтр от частиц от озона почти не защищает.');
-  }
-  return { ...TRAINING[tier], notes };
+  if (o3 != null && o3 > O3_HIGH) notes.push(T.HOUR_OZONE);
+  if (no2 != null && no2 > NO2_HIGH) notes.push(T.HOUR_NO2);
+  return { tone: BIKE_TONES[bl.tier], line: bikeLine(bl), notes };
 }
 
-export function windowAdvice(pm25, cleanest) {
-  if (pm25 == null) return { tone: 'none', text: 'Нет данных.' };
-  if (pm25 <= 15) return { tone: 'ok', text: 'Можно проветривать свободно.' };
-  if (pm25 <= 25) return { tone: 'ok', text: 'Как обычно, но коротко и интенсивно — 10–15 минут.' };
-  if (pm25 <= 50) {
-    const when = cleanest
-      ? ` Самый чистый час в ближайшие 6 ч по прогнозу — ${cleanest.label} (≈${formatValue(cleanest.value)}).`
-      : '';
-    return { tone: 'caution', text: `Коротко, 5–10 минут, затем очиститель на максимум.${when}` };
-  }
-  return { tone: 'warn', text: 'Только при необходимости (духота, влажность), коротко — и сразу очиститель.' };
-}
-
-export function purifierAdvice(pm25) {
-  if (pm25 == null) return { tone: 'none', text: 'Авто-режим.' };
-  if (pm25 <= 25) return { tone: 'ok', text: 'Авто-режим.' };
-  return { tone: 'caution', text: 'Максимум на 30–45 минут (особенно после проветривания), затем авто.' };
+// Предупреждения для верхнего блока: озон и NO₂ в классе «плохо» и хуже.
+export function gasAlerts({ o3, no2, gas }) {
+  const alerts = [];
+  if (o3 != null && o3 > O3_HIGH) alerts.push({ pol: 'o3', value: o3, source: gas });
+  if (no2 != null && no2 > NO2_HIGH) alerts.push({ pol: 'no2', value: no2, source: gas });
+  return alerts;
 }

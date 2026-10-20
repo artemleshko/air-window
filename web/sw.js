@@ -3,7 +3,7 @@
 // открывается последняя сохранённая версия. Данные прогнозов кэширует само приложение
 // (localStorage), поэтому запросы к Open-Meteo здесь не перехватываются.
 
-const CACHE = 'air-window-v1';
+const CACHE = 'air-window-v2';
 const SHELL = [
   './',
   'index.html',
@@ -19,6 +19,8 @@ const SHELL = [
   'js/advice.js',
   'js/api.js',
   'js/chart.js',
+  'js/format.js',
+  'js/texts.js',
 ];
 
 self.addEventListener('install', (event) => {

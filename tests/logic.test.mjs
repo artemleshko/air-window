@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { levelIndex } from '../web/js/eaqi.js';
 import { warsawLocalToUnix, hourLabel, relativeHourLabel } from '../web/js/time.js';
-import { trainingAdvice, windowAdvice, purifierAdvice, homeReference } from '../web/js/advice.js';
+import { adviceNow, hourAdvice, gasAlerts, homeReference } from '../web/js/advice.js';
 import { precipKind, precipText, roadFlags } from '../web/js/weather.js';
 import { parseGiosSeries, appendHistory } from '../scripts/update-data.mjs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
@@ -63,26 +63,57 @@ test('Разбор ответа GIOŚ: порядок, пропуски, сме�
   assert.throws(() => parseGiosSeries({}));
 });
 
-test('Советы для тренировки по согласованным порогам', () => {
-  assert.equal(trainingAdvice({ pm25: 13 }).tone, 'ok');
-  assert.equal(trainingAdvice({ pm25: 25 }).tone, 'ok');
-  assert.equal(trainingAdvice({ pm25: 26 }).tone, 'caution');
-  assert.equal(trainingAdvice({ pm25: 60 }).tone, 'warn');
-  assert.equal(trainingAdvice({ pm25: 95 }).tone, 'bad');
-  // PM10 с порогами вдвое выше поднимает уровень, даже если PM2.5 низкий.
-  assert.equal(trainingAdvice({ pm25: 10, pm10: 120 }).tone, 'warn');
-  // Высокий озон добавляет пояснение.
-  assert.equal(trainingAdvice({ pm25: 10, o3: 130 }).notes.length, 1);
-  assert.equal(trainingAdvice({}).tone, 'none');
+const ctx = (extra) => ({
+  pm: { station: 'Warszawska', time: '14:00', kind: 'measured' },
+  gas: { station: '42 Pułku', time: '14:00' },
+  o3: 40,
+  no2: 10,
+  cleanest: { label: '17:00', value: 18 },
+  ...extra,
 });
 
-test('Советы для окон и очистителя', () => {
-  assert.match(windowAdvice(10).text, /свободно/);
-  assert.match(windowAdvice(20).text, /10–15/);
-  assert.match(windowAdvice(30, { label: '14:00', value: 18 }).text, /14:00/);
-  assert.match(windowAdvice(60).text, /необходимости/);
-  assert.equal(purifierAdvice(20).text, 'Авто-режим.');
-  assert.match(purifierAdvice(26).text, /Максимум/);
+test('Велосипед: пороги PM2.5 и PM10, озон и NO₂', () => {
+  assert.equal(adviceNow(ctx({ pm25: 13, pm10: 20 })).bike.tone, 'ok');
+  assert.equal(adviceNow(ctx({ pm25: 25, pm10: 20 })).bike.tone, 'ok');
+  assert.equal(adviceNow(ctx({ pm25: 26, pm10: 20 })).bike.tone, 'caution');
+  assert.equal(adviceNow(ctx({ pm25: 60, pm10: 70 })).bike.tone, 'warn');
+  assert.equal(adviceNow(ctx({ pm25: 95, pm10: 120 })).bike.tone, 'bad');
+  // PM10 поднимает уровень и называется в пояснении.
+  const pm10 = adviceNow(ctx({ pm25: 10, pm10: 120 })).bike;
+  assert.equal(pm10.tone, 'warn');
+  assert.match(pm10.explain[0], /^PM10 120/);
+  // Нормальные газы упоминаются одной фразой.
+  assert.match(adviceNow(ctx({ pm25: 10, pm10: 20 })).bike.explain.at(-1), /невысокие/);
+  // Высокий озон — пояснение, сильный — отдельная строка совета.
+  assert.match(adviceNow(ctx({ pm25: 10, pm10: 20, o3: 130 })).bike.explain.at(-1), /с утра/);
+  const severe = adviceNow(ctx({ pm25: 10, pm10: 20, o3: 190 })).bike;
+  assert.equal(severe.line, 'Спокойный темп или дома.');
+  assert.match(adviceNow(ctx({ pm25: 10, pm10: 20, no2: 70 })).bike.explain.at(-1), /выхлопов/);
+});
+
+test('Окна и очиститель', () => {
+  assert.match(adviceNow(ctx({ pm25: 10 })).windows.line, /сколько угодно/);
+  assert.match(adviceNow(ctx({ pm25: 20 })).windows.line, /10–15/);
+  const w = adviceNow(ctx({ pm25: 30 })).windows;
+  assert.match(w.line, /5–10/);
+  assert.match(w.explain[0], /17:00/);
+  assert.match(adviceNow(ctx({ pm25: 30, cleanest: null })).windows.explain[0], /Проветривайте коротко/);
+  assert.match(adviceNow(ctx({ pm25: 60 })).windows.line, /душно/);
+  assert.match(adviceNow(ctx({ pm25: 10, o3: 130 })).windows.explain.at(-1), /утром/);
+  assert.equal(adviceNow(ctx({ pm25: 20 })).purifier.line, 'Режим «Авто».');
+  assert.match(adviceNow(ctx({ pm25: 26 })).purifier.line, /Максимум/);
+  // Значение модели помечается в начале пояснения.
+  const model = adviceNow(ctx({ pm25: 10, pm: { station: 'модель', time: '14:00', kind: 'model' } }));
+  assert.match(model.windows.explain[0], /прогноз модели/);
+  assert.equal(adviceNow(ctx({ pm25: null })).bike.line, 'Нет данных.');
+});
+
+test('Совет на час прогноза и предупреждения о газах', () => {
+  assert.equal(hourAdvice({ pm25: 30, pm10: 40, o3: 50 }).tone, 'caution');
+  assert.equal(hourAdvice({ pm25: 10, o3: 130 }).notes.length, 1);
+  assert.equal(hourAdvice({}).tone, 'none');
+  assert.deepEqual(gasAlerts({ o3: 110, no2: 30 }), []);
+  assert.deepEqual(gasAlerts({ o3: 125, no2: 61, gas: null }).map((a) => a.pol), ['o3', 'no2']);
 });
 
 test('Опорное значение: свежая станция, иначе следующая, иначе модель', () => {
@@ -92,7 +123,7 @@ test('Опорное значение: свежая станция, иначе �
   assert.deepEqual([fresh.source, fresh.value, fresh.kind], ['S609', 20, 'measured']);
   const fallback = homeReference([st(609, now - 5 * 3600, 20), st(17658, now - 3600, 30)], null, now);
   assert.equal(fallback.source, 'S17658');
-  const model = homeReference([st(609, now - 9 * 3600, 20)], { value: 7, time: now }, now);
+  const model = homeReference([st(609, now - 9 * 3600, 20)], { pm25: 7, time: now }, now);
   assert.equal(model.kind, 'model');
 });
 

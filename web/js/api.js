@@ -88,6 +88,7 @@ const WEATHER_MAPPING = {
   code: 'weather_code',
   wind: 'wind_speed_10m',
   gusts: 'wind_gusts_10m',
+  isDay: 'is_day',
 };
 
 function weatherUrl(loc) {
