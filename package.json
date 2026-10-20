@@ -1,0 +1,16 @@
+{
+  "name": "air-window",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Air Window — качество воздуха и погода для тренировок в Белостоке",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/",
+    "update-data": "node scripts/update-data.mjs --store .local-store",
+    "dev": "node scripts/dev-server.mjs",
+    "icons": "node scripts/make-icons.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

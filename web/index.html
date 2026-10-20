@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Качество воздуха и погода для тренировок: Белосток и Супрасль">
+  <meta name="theme-color" content="#f4f5f2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121517" media="(prefers-color-scheme: dark)">
+  <title>Air Window</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Air Window</h1>
+      <p id="status" class="muted small">загрузка…</p>
+    </div>
+    <div class="top-actions">
+      <button id="refresh" class="icon-btn" type="button" aria-label="Обновить">↻</button>
+      <button id="legend-btn" class="icon-btn" type="button" aria-label="Легенда и пояснения">?</button>
+    </div>
+  </header>
+
+  <p id="banner" class="banner" role="status" hidden></p>
+
+  <main>
+    <div class="col">
+      <section id="now" class="card" aria-live="polite"></section>
+      <section id="advice" class="card"></section>
+    </div>
+    <div class="col">
+      <section id="forecast" class="card">
+        <div class="card-head"><h2>Ближайшие 12 часов</h2></div>
+        <div class="seg" id="loc-seg" role="group" aria-label="Место">
+          <button type="button" data-loc="bialystok">Białystok</button>
+          <button type="button" data-loc="suprasl">Supraśl</button>
+        </div>
+        <div class="seg seg-small" id="pol-seg" role="group" aria-label="Показатель">
+          <button type="button" data-pol="pm25">PM2.5</button>
+          <button type="button" data-pol="pm10">PM10</button>
+          <button type="button" data-pol="o3">O₃</button>
+          <button type="button" data-pol="no2">NO₂</button>
+        </div>
+        <div id="chart"></div>
+        <div id="chart-legend" class="chart-legend small"></div>
+        <p class="muted small hours-caption">По часам — прогноз модели CAMS и погода.</p>
+        <ol id="hours" class="hours"></ol>
+        <p class="muted small">Нажмите на час, чтобы увидеть все показатели, погоду и совет для тренировки.</p>
+      </section>
+      <footer id="sources" class="sources small"></footer>
+    </div>
+  </main>
+
+  <dialog id="legend" aria-labelledby="legend-title">
+    <div class="dialog-body">
+      <div class="card-head">
+        <h2 id="legend-title">Как читать цвета</h2>
+        <button id="legend-close" class="icon-btn" type="button" aria-label="Закрыть">✕</button>
+      </div>
+      <p class="small">Европейский индекс качества воздуха (EAQI) Европейского агентства по окружающей среде,
+        редакция 2024 года, согласованная с рекомендациями ВОЗ 2021. Значения — мкг/м³, цвет считается
+        по часовому значению.</p>
+      <div class="table-wrap"><table id="legend-table" class="legend-table"></table></div>
+
+      <h3>Измерения и прогноз</h3>
+      <ul class="small">
+        <li><b>Сплошная линия и блок «Сейчас»</b> — измерения станций GIOŚ, часовые средние. Время — как его публикует GIOŚ; данные появляются с задержкой 20–60 минут.</li>
+        <li><b>Пунктир и часы впереди</b> — модель CAMS (сетка ~11 км). Она показывает фон района, а не конкретную улицу, и может недооценивать местные вечерние пики от печного отопления.</li>
+        <li>Станции разного типа (фон, у дороги) показаны отдельно и не усредняются: расхождения между ними — нормальны.</li>
+        <li>⏱ — данные станции старше 3 часов.</li>
+      </ul>
+
+      <h3>Советы (по PM2.5)</h3>
+      <ul class="small">
+        <li><b>Тренировка:</b> до 25 — без ограничений; 25–50 — респиратор на интенсивных отрезках и в городе; 50–90 — респиратор и спокойный темп или дома; выше 90 — дома. Для PM10 пороги вдвое выше. Озон выше 120 — лучше ехать утром: фильтр от частиц от озона почти не защищает.</li>
+        <li><b>Окна:</b> до 15 — свободно; 15–25 — коротко и интенсивно, 10–15 мин; 25–50 — 5–10 мин в самый чистый час; выше 50 — только по необходимости.</li>
+        <li><b>Очиститель:</b> авто-режим; выше 25 — максимум на 30–45 минут, особенно после проветривания.</li>
+      </ul>
+
+      <h3>Погода</h3>
+      <ul class="small">
+        <li>Осадки: вероятность в % и количество в мм за час.</li>
+        <li>⚠ — подсказка по прогнозу температуры и осадков: риск гололёда около нуля после осадков, мокрая дорога в оттепель после мороза, сильные порывы ветра. Это не знание о состоянии дорог.</li>
+      </ul>
+      <p class="muted small">Air Window — ориентир, а не медицинская рекомендация.</p>
+    </div>
+  </dialog>
+
+  <noscript><p class="banner">Для работы приложения нужен JavaScript.</p></noscript>
+</body>
+</html>

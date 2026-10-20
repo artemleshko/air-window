@@ -1,0 +1,76 @@
+# Раз в полчаса: забрать измерения GIOŚ, сохранить их в ветку `data` и опубликовать сайт.
+# Тот же процесс запускается при каждом изменении кода в main и вручную (кнопка Run workflow).
+
+name: Обновление данных и публикация
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '25,55 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: update-and-deploy
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Код приложения
+        uses: actions/checkout@v5
+
+      - name: Ветка с данными
+        uses: actions/checkout@v5
+        with:
+          ref: data
+          path: data-store
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Тесты
+        if: github.event_name != 'schedule'
+        run: npm test
+
+      - name: Сбор измерений GIOŚ
+        run: node scripts/update-data.mjs --store data-store
+
+      - name: Сохранение данных в ветку data
+        working-directory: data-store
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Новых данных нет"
+          else
+            git commit -q -m "Данные GIOŚ $(date -u +'%Y-%m-%d %H:%M') UTC"
+            git push -q
+          fi
+
+      - name: Сборка сайта
+        run: |
+          cp -r web _site
+          mkdir -p _site/data
+          cp data-store/latest.json _site/data/latest.json
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

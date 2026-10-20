@@ -1,0 +1,4 @@
+node_modules/
+.local-store/
+_site/
+*.log
