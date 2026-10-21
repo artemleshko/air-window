@@ -7,7 +7,8 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '25,55 * * * *'
+    # Минуты :17 и :47 — подальше от начала часа, когда у GitHub пик нагрузки и запуски откладываются.
+    - cron: '17,47 * * * *'
   workflow_dispatch:
 
 permissions:
