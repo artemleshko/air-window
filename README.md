@@ -67,6 +67,18 @@ npm run update-data  # собрать свежие данные GIOŚ в .local-
 npm run dev          # открыть http://localhost:8080
 ```
 
+## Будильник обновления данных
+
+Расписание GitHub Actions в этом репозитории срабатывает ненадёжно, поэтому сбор данных
+раз в 30 минут (в :17 и :47) запускает Cloudflare Worker `air-window-cron` из папки `worker/`.
+Ключ GitHub хранится в секрете `GITHUB_TOKEN` в Cloudflare (в репозитории его нет).
+
+- **Ключ действует до 30.09.2027.** До этой даты: создать новый fine-grained token на GitHub
+  (только репозиторий air-window, Actions: Read and write) и заменить значение секрета в Cloudflare:
+  Workers & Pages → air-window-cron → Settings → Variables and Secrets.
+- Изменить код будильника: `cd worker`, `npx wrangler login`, `npx wrangler deploy`, затем `npx wrangler logout`.
+- Проверить работу: вкладка Actions в GitHub — запуски «workflow_dispatch» дважды в час.
+
 ## Условия использования данных
 
 - GIOŚ: при использовании указывается источник; текущие данные не верифицированы и могут уточняться.
