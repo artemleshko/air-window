@@ -1,0 +1,12 @@
+{
+  "name": "air-window-cron",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Worker: раз в полчаса запускает сбор данных Air Window на GitHub",
+  "scripts": {
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.86.0"
+  }
+}

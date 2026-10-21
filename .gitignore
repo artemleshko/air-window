@@ -2,3 +2,5 @@ node_modules/
 .local-store/
 _site/
 *.log
+.wrangler/
+.dev.vars

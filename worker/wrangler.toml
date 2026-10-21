@@ -1,0 +1,16 @@
+# Cloudflare Worker — будильник для GitHub Actions (см. worker/src/index.js).
+
+name = "air-window-cron"
+main = "src/index.js"
+compatibility_date = "2026-04-01"
+
+# Без публичного адреса: Worker только выполняет расписание.
+workers_dev = false
+preview_urls = false
+
+[triggers]
+# Время UTC. Минуты :17 и :47 — GIOŚ публикует часовые данные через 20–50 минут после часа.
+crons = ["17,47 * * * *"]
+
+[observability]
+enabled = true
