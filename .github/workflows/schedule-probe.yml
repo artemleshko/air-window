@@ -1,0 +1,23 @@
+# Диагностика: срабатывает ли расписание GitHub в этом репозитории вообще.
+# Только печатает время — без публикации, без доступа к коду и без секретов.
+# Удалить после диагностики.
+
+name: Проверка расписания
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Время запуска
+        run: |
+          echo "Событие: ${{ github.event_name }}"
+          echo "UTC:     $(date -u '+%Y-%m-%d %H:%M:%S')"
+          echo "Варшава: $(TZ=Europe/Warsaw date '+%Y-%m-%d %H:%M:%S')"
