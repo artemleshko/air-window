@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 10
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment-retry.outputs.page_url || steps.deployment-retry-2.outputs.page_url }}
     steps:
       - name: Код приложения
         uses: actions/checkout@v5
@@ -71,5 +71,26 @@ jobs:
         with:
           path: _site
 
+      # С 11.11.2026 GitHub часто не находит только что загруженный сайт
+      # («No artifacts named github-pages were found»). Это задержка на стороне GitHub,
+      # поэтому при неудаче публикация повторяется ещё два раза: через 30 и через 60 секунд.
       - id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v5
+
+      - name: Пауза перед повтором публикации
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+
+      - id: deployment-retry
+        if: steps.deployment.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/deploy-pages@v5
+
+      - name: Пауза перед последним повтором
+        if: steps.deployment.outcome == 'failure' && steps.deployment-retry.outcome == 'failure'
+        run: sleep 60
+
+      - id: deployment-retry-2
+        if: steps.deployment.outcome == 'failure' && steps.deployment-retry.outcome == 'failure'
         uses: actions/deploy-pages@v5
